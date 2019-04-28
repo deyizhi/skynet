@@ -1,5 +1,5 @@
 /*
-** $Id: lgc.c,v 2.215 2016/12/22 13:08:50 roberto Exp $
+** $Id: lgc.c,v 2.215.1.2 2017/08/31 16:15:27 roberto Exp $
 ** Garbage Collector
 ** See Copyright Notice in lua.h
 */
@@ -497,7 +497,7 @@ static int traverseproto (global_State *g, Proto *f) {
     f->cache = NULL;  /* allow cache to be collected */
   if (f->sp == NULL)
     return sizeof(Proto);
-  nk = (f->k == NULL) ? 0 : f->sp->sizek;
+  nk = (f->k == f->sp->k && g != f->sp->l_G) ? 0 : f->sp->sizek;
   np = (f->p == NULL) ? 0 : f->sp->sizep;
   for (i = 0; i < nk; i++)  /* mark literals */
     markvalue(g, &f->k[i]);
@@ -652,10 +652,11 @@ static void clearkeys (global_State *g, GCObject *l, GCObject *f) {
     Table *h = gco2t(l);
     Node *n, *limit = gnodelast(h);
     for (n = gnode(h, 0); n < limit; n++) {
-      if (iscleared(g, gkey(n))) {
+      if (!ttisnil(gval(n)) && (iscleared(g, gkey(n)))) {
         setnilvalue(gval(n));  /* remove value ... */
-        removeentry(n);  /* and remove entry from table */
       }
+      if (ttisnil(gval(n)))  /* is entry empty? */
+        removeentry(n);  /* remove entry from table */
     }
   }
 }
